@@ -1,14 +1,19 @@
+🙏 Thanks to [OmitNomis](https://github.com/OmitNomis/ShareSansarScraper) for the original ShareSansar data scraping inspiration!
+
+
 # Nepse-SCRAPER & ANALYZER 📊
 
-This tool scrapes, consolidates, and analyzes NEPSE (Nepal Stock Exchange) stock prices across multiple time intervals — 3-day, weekly, and monthly — and outputs clean, structured CSV/Excel files ready for comparison.
+This tool scrapes, consolidates, and analyzes NEPSE (Nepal Stock Exchange) stock prices across multiple time intervals
 
-🙏 Thanks to [OmitNomis](https://github.com/OmitNomis/ShareSansarScraper) for the original ShareSansar data scraping inspiration!
+ 3-day difference, 
+ weekly, 
+ and monthly — and outputs clean, structured CSV/Excel files ready for comparison.
 
 
 
 ## 📁 Project Structure
 
-`
+
 
         ├───Output
         │   ├───3-Day-Consolidated
@@ -22,7 +27,7 @@ This tool scrapes, consolidates, and analyzes NEPSE (Nepal Stock Exchange) stock
         ├─── script.py
         ├─── requirement.txt
 
-`
+
 
 ## Usage
 
