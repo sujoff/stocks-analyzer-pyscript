@@ -26,6 +26,14 @@ This tool scrapes, consolidates, and analyzes NEPSE (Nepal Stock Exchange) stock
 
 ## Usage
 
+## 🔧 Setup
+
+1. Clone the repository:
+   
+   `git clone https://github.com/sujoff/stocks-analyzer-pyscript.git`
+   `cd stocks-analyzer-pyscript`
+
+
 Install dependencies:
 
     `pip install -r requirement.txt`
@@ -42,6 +50,12 @@ Run the script with one of the following options:
 
 # For monthly intervals (scrapes 1, 3, 6, and 9 months ago)
 `python script.py --monthly`
+
+# For scraping data based on specific data, do:
+
+`python script.py --date=2024-04-25 --weekly`
+`python script.py --date=2024-04-25 --daily`
+`python script.py --date=2024-04-25 --monthly`
 
 
 Each mode will:
@@ -64,4 +78,4 @@ Each mode will:
 
 ## 🛠 Author
 
-Made with ❤️ by sujan 💦.
+Made with ❤️💦 by sujan .
