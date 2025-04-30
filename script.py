@@ -48,7 +48,7 @@ def download_csv(date_obj: datetime, subfolder: str):
         print(f"Failed to download: {filename}")
         return None
 
-# Build date list based on mode
+# Build date list baseed on above mentioned mode
 
 def build_dates(mode: str, ref_date: datetime):
     dates = [ref_date]
