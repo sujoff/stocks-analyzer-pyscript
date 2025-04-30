@@ -59,9 +59,11 @@ Run the script with one of the following options:
 
 # For scraping data based on specific data, do:
 
-`python script.py --date=2024-04-25 --weekly`
-`python script.py --date=2024-04-25 --daily`
-`python script.py --date=2024-04-25 --monthly`
+        python script.py --date=2024-04-25 --weekly
+
+        python script.py --date=2024-04-25 --daily
+        
+        python script.py --date=2024-04-25 --monthly
 
 
 Each mode will:
