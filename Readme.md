@@ -1,4 +1,6 @@
-🙏 Thanks to [OmitNomis](https://github.com/OmitNomis/ShareSansarScraper) for the original ShareSansar data scraping inspiration!
+🙏 Thanks to [OmitNomis](https://github.com/OmitNomis/ShareSansarScraper) for the original ShareSansar data scraping sources!
+
+
 
 
 # Nepse-SCRAPER & ANALYZER 📊
@@ -62,7 +64,7 @@ Run the script with one of the following options:
         python script.py --date=2024-04-25 --weekly
 
         python script.py --date=2024-04-25 --daily
-        
+
         python script.py --date=2024-04-25 --monthly
 
 
