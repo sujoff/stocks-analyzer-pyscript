@@ -13,7 +13,26 @@ BASE_DIR = Path(__file__).resolve().parent
 SCRAPE_DIR = BASE_DIR / "Scrape-StockPrice"
 OUTPUT_DIR = BASE_DIR / "Output"
 
-# Helper: Clean up downloaded CSV files
+def show_help():
+    print("""
+🛠️ Nepse SCRAPER & ANALYZER – Help Menu
+
+Usage:
+  python script.py [--daily | --weekly | --monthly] [--date=YYYY-MM-DD]
+
+Options:
+  --daily            Scrape and consolidate data for the past 30 days (3-day intervals).
+  --weekly           Scrape and consolidate data for the past 10 weeks.
+  --monthly          Scrape and consolidate data from 1, 3, 6, and 9 months ago.
+  --date=YYYY-MM-DD  Optional: Specify a custom reference date for scraping.
+  --help             Show this help menu.
+
+Examples:
+  python script.py --daily
+  python script.py --weekly --date=2024-12-01
+""")
+    sys.exit(0)
+
 def cleanup(downloaded_files):
     print("\n🧹 Cleaning up scraped CSV files...")
     for file in downloaded_files:
@@ -23,7 +42,6 @@ def cleanup(downloaded_files):
         except Exception as e:
             print(f"⚠️ Failed to delete {file}: {e}")
 
-# Helper: Open CSV with default application
 def open_csv(file_path):
     print(f"\n📂 Opening CSV: {file_path}")
     try:
@@ -31,12 +49,11 @@ def open_csv(file_path):
             os.startfile(file_path)
         elif sys.platform.startswith("darwin"):
             subprocess.run(["open", file_path])
-        else:  # Assume Linux
+        else:
             subprocess.run(["xdg-open", file_path])
     except Exception as e:
         print(f"⚠️ Could not open file automatically: {e}")
 
-# Download CSV file from URL
 def download_csv(date_obj: datetime, subfolder: str):
     filename = date_obj.strftime("%Y_%m_%d.csv")
     url = f"{BASE_URL}/{filename}"
@@ -53,7 +70,6 @@ def download_csv(date_obj: datetime, subfolder: str):
         print(f"❌ Failed to download: {filename}")
         return None
 
-# Build date list based on mode
 def build_dates(mode: str, ref_date: datetime):
     dates = [ref_date]
     if mode == '--daily':
@@ -67,10 +83,8 @@ def build_dates(mode: str, ref_date: datetime):
             dates.append(ref_date - relativedelta(months=i))
     else:
         raise ValueError("Invalid mode. Use --daily, --weekly or --monthly")
-
     return [d.replace(hour=0, minute=0, second=0, microsecond=0) for d in dates]
 
-# Load and parse CSVs into a dictionary {date: DataFrame}
 def load_dataframes(date_list, subfolder, downloaded_files):
     frames = {}
     for d in date_list:
@@ -86,7 +100,6 @@ def load_dataframes(date_list, subfolder, downloaded_files):
                 print(f"⚠️ Error reading/parsing {path.name}: {e}")
     return frames
 
-# Merge all dataframes into one comparison table
 def consolidate_data(frames: dict):
     result_df = None
     for date, df in frames.items():
@@ -97,13 +110,11 @@ def consolidate_data(frames: dict):
             result_df = pd.merge(result_df, df, on='Symbol', how='outer')
     return result_df
 
-# Calculate +/- Momentum % and Overall %
 def calculate_percentage(df, date_columns):
     try:
         first_col = f"{date_columns[-1]}_Close"
         last_col = f"{date_columns[0]}_Close"
 
-        # +/- Momentum %
         diffs = []
         for col in date_columns[1:]:
             comp_col = f"{col}_Close"
@@ -111,10 +122,8 @@ def calculate_percentage(df, date_columns):
             diffs.append(diff)
         df['+/- Momentum %'] = (sum(diffs) * 100).round(2).astype(str) + "%"
 
-        # Simple overall percentage
         df['Overall %'] = (((df[last_col] - df[first_col]) / df[first_col]) * 100).round(2).astype(str) + "%"
 
-        # Label
         def label(row):
             try:
                 perc = float(row['+/- Momentum %'].replace('%', ''))
@@ -128,12 +137,13 @@ def calculate_percentage(df, date_columns):
         print("Error calculating percentages:", e)
     return df
 
-# Parse command-line arguments
 def parse_args():
     mode = None
     custom_date = None
     for arg in sys.argv[1:]:
-        if arg.startswith("--date="):
+        if arg == "--help":
+            show_help()
+        elif arg.startswith("--date="):
             date_str = arg.split("=", 1)[1]
             try:
                 custom_date = datetime.strptime(date_str, "%Y-%m-%d")
@@ -144,7 +154,7 @@ def parse_args():
             mode = arg
 
     if not mode:
-        print("Usage: python script.py --daily | --weekly | --monthly [--date=YYYY-MM-DD]")
+        print("❌ ERROR: Missing required mode argument.\nUse --help to see usage.")
         sys.exit(1)
 
     return mode, custom_date
