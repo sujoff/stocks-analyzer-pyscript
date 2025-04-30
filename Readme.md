@@ -36,6 +36,7 @@ This tool scrapes, consolidates, and analyzes NEPSE (Nepal Stock Exchange) stock
 1. Clone the repository:
    
    `git clone https://github.com/sujoff/stocks-analyzer-pyscript.git`
+   
    `cd stocks-analyzer-pyscript`
 
 
