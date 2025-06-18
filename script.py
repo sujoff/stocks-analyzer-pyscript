@@ -138,26 +138,38 @@ def calculate_percentage(df, date_columns):
     return df
 
 def parse_args():
-    mode = None
-    custom_date = None
-    for arg in sys.argv[1:]:
-        if arg == "--help":
-            show_help()
-        elif arg.startswith("--date="):
-            date_str = arg.split("=", 1)[1]
-            try:
-                custom_date = datetime.strptime(date_str, "%Y-%m-%d")
-            except ValueError:
-                print("❌ ERROR: Invalid date format. Use --date=YYYY-MM-DD")
-                sys.exit(1)
-        elif arg in ["--daily", "--weekly", "--monthly"]:
-            mode = arg
+    print("Select scraping mode:")
+    print("[1] Daily")
+    print("[2] Weekly")
+    print("[3] Monthly")
+    print("[4] Exit")
+    choice = input("Enter choice (1/2/3/4): ").strip()
 
-    if not mode:
-        print("❌ ERROR: Missing required mode argument.\nUse --help to see usage.")
+    if choice == "4":
+        sys.exit(0)
+    elif choice == "1":
+        mode = "--daily"
+    elif choice == "2":
+        mode = "--weekly"
+    elif choice == "3":
+        mode = "--monthly"
+    else:
+        print("Invalid choice.")
         sys.exit(1)
 
+    today_choice = input("Do you want to use today's date? (Y/N): ").strip().lower()
+    if today_choice == "y":
+        custom_date = None
+    else:
+        while True:
+            date_input = input("Enter custom date (YYYY-MM-DD): ").strip()
+            try:
+                custom_date = datetime.strptime(date_input, "%Y-%m-%d")
+                break
+            except ValueError:
+                print("Invalid date format. Try again.")
     return mode, custom_date
+
 
 # Main
 if __name__ == '__main__':
