@@ -21,15 +21,11 @@ Usage:
   python script.py [--daily | --weekly | --monthly] [--date=YYYY-MM-DD]
 
 Options:
-  --daily            Scrape and consolidate data for the past 30 days (3-day intervals).
-  --weekly           Scrape and consolidate data for the past 10 weeks.
-  --monthly          Scrape and consolidate data from 1, 3, 6, and 9 months ago.
-  --date=YYYY-MM-DD  Optional: Specify a custom reference date for scraping.
-  --help             Show this help menu.
-
-Examples:
-  python script.py --daily
-  python script.py --weekly --date=2024-12-01
+  --daily            Scrape past 30 days (3-day intervals)
+  --weekly           Scrape past 10 weeks
+  --monthly          Scrape 1, 3, 6, 9 months back
+  --date=YYYY-MM-DD  Custom reference date
+  --help             Help menu
 """)
     sys.exit(0)
 
@@ -38,12 +34,10 @@ def cleanup(downloaded_files):
     for file in downloaded_files:
         try:
             os.remove(file)
-            print(f"🗑️ Deleted: {file}")
-        except Exception as e:
-            print(f"⚠️ Failed to delete {file}: {e}")
+        except:
+            pass
 
 def open_csv(file_path):
-    print(f"\n📂 Opening CSV: {file_path}")
     try:
         if sys.platform.startswith("win"):
             os.startfile(file_path)
@@ -51,8 +45,8 @@ def open_csv(file_path):
             subprocess.run(["open", file_path])
         else:
             subprocess.run(["xdg-open", file_path])
-    except Exception as e:
-        print(f"⚠️ Could not open file automatically: {e}")
+    except:
+        pass
 
 def download_csv(date_obj: datetime, subfolder: str):
     filename = date_obj.strftime("%Y_%m_%d.csv")
@@ -60,109 +54,116 @@ def download_csv(date_obj: datetime, subfolder: str):
     save_path = SCRAPE_DIR / subfolder / filename
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(save_path, 'wb') as f:
-            f.write(response.content)
-        print(f"✅ Downloaded: {filename}")
+    r = requests.get(url)
+    if r.status_code == 200:
+        with open(save_path, "wb") as f:
+            f.write(r.content)
         return save_path
-    else:
-        print(f"❌ Failed to download: {filename}")
-        return None
+    return None
 
 def build_dates(mode: str, ref_date: datetime):
     dates = [ref_date]
+
     if mode == '--daily':
         for i in range(1, 10):
             dates.append(ref_date - timedelta(days=i * 3))
+
     elif mode == '--weekly':
         for i in range(1, 10):
             dates.append(ref_date - timedelta(days=i * 7))
+
     elif mode == '--monthly':
         for i in [1, 3, 6, 9]:
             dates.append(ref_date - relativedelta(months=i))
-    else:
-        raise ValueError("Invalid mode. Use --daily, --weekly or --monthly")
+
     return [d.replace(hour=0, minute=0, second=0, microsecond=0) for d in dates]
 
 def load_dataframes(date_list, subfolder, downloaded_files):
     frames = {}
+
     for d in date_list:
         path = download_csv(d, subfolder)
         if path and path.exists():
-            try:
-                df = pd.read_csv(path)
-                df = df[['Symbol', 'Close']].copy()
-                df['Close'] = df['Close'].astype(str).str.replace(',', '').astype(float)
-                frames[d.strftime("%d.%m.%Y")] = df
-                downloaded_files.append(str(path))
-            except Exception as e:
-                print(f"⚠️ Error reading/parsing {path.name}: {e}")
+            df = pd.read_csv(path)
+
+            df = df[['Symbol', 'Close']].copy()
+            df['Close'] = df['Close'].astype(str).str.replace(',', '').astype(float)
+
+            frames[d.strftime("%d.%m.%Y")] = df
+            downloaded_files.append(str(path))
+
     return frames
 
 def consolidate_data(frames: dict):
     result_df = None
+
     for date, df in frames.items():
         df = df.rename(columns={'Close': f'{date}_Close'})
+
         if result_df is None:
             result_df = df
         else:
             result_df = pd.merge(result_df, df, on='Symbol', how='outer')
+
     return result_df
 
 def calculate_percentage(df, date_columns):
-    try:
-        first_col = f"{date_columns[-1]}_Close"
-        last_col = f"{date_columns[0]}_Close"
+    first_col = f"{date_columns[-1]}_Close"
+    last_col = f"{date_columns[0]}_Close"
 
-        diffs = []
-        for col in date_columns[1:]:
-            comp_col = f"{col}_Close"
-            diff = (df[last_col] - df[comp_col]) / df[comp_col]
-            diffs.append(diff)
-        df['+/- Momentum %'] = (sum(diffs) * 100).round(2).astype(str) + "%"
+    diffs = []
+    for col in date_columns[1:]:
+        comp_col = f"{col}_Close"
+        diffs.append((df[last_col] - df[comp_col]) / df[comp_col])
 
-        df['Overall %'] = (((df[last_col] - df[first_col]) / df[first_col]) * 100).round(2).astype(str) + "%"
+    df['+/- Momentum %'] = (sum(diffs) * 100).round(2).astype(str) + "%"
 
-        def label(row):
-            try:
-                perc = float(row['+/- Momentum %'].replace('%', ''))
-                return 'Up' if perc > 0 else 'Down' if perc < 0 else 'No Change'
-            except:
-                return 'No Change'
+    df['Overall %'] = (((df[last_col] - df[first_col]) / df[first_col]) * 100).round(2).astype(str) + "%"
 
-        df['Trend'] = df.apply(label, axis=1)
+    def label(row):
+        try:
+            val = float(row['+/- Momentum %'].replace('%', ''))
+            return 'Up' if val > 0 else 'Down' if val < 0 else 'No Change'
+        except:
+            return 'No Change'
 
-    except Exception as e:
-        print("Error calculating percentages:", e)
+    df['Trend'] = df.apply(label, axis=1)
+
     return df
+
+def reorder_columns(df):
+    date_cols = [c for c in df.columns if c.endswith("_Close")]
+
+    ordered = (
+        ['Symbol', '+/- Momentum %', 'Overall %', 'Trend']
+        + date_cols
+    )
+
+    return df[ordered]
 
 def parse_args():
     mode = None
     custom_date = None
+
     for arg in sys.argv[1:]:
         if arg == "--help":
             show_help()
+
         elif arg.startswith("--date="):
-            date_str = arg.split("=", 1)[1]
-            try:
-                custom_date = datetime.strptime(date_str, "%Y-%m-%d")
-            except ValueError:
-                print("❌ ERROR: Invalid date format. Use --date=YYYY-MM-DD")
-                sys.exit(1)
+            custom_date = datetime.strptime(arg.split("=")[1], "%Y-%m-%d")
+
         elif arg in ["--daily", "--weekly", "--monthly"]:
             mode = arg
 
     if not mode:
-        print("❌ ERROR: Missing required mode argument.\nUse --help to see usage.")
+        print("Missing mode")
         sys.exit(1)
 
     return mode, custom_date
 
-# Main
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     downloaded_files = []
-    output_file = None
 
     try:
         mode, custom_date = parse_args()
@@ -173,46 +174,43 @@ if __name__ == '__main__':
             '--weekly': 'weekly',
             '--monthly': 'monthly'
         }
+
         output_folder_map = {
             '--daily': OUTPUT_DIR / '3-Day-Consolidated',
             '--weekly': OUTPUT_DIR / 'Weekly-Consolidated',
-            '--monthly': OUTPUT_DIR / 'Montly-Consolidated'
+            '--monthly': OUTPUT_DIR / 'Monthly-Consolidated'
         }
 
         dates = build_dates(mode, ref_date)
-        subfolder = subfolder_map[mode]
+
+        frames = load_dataframes(dates, subfolder_map[mode], downloaded_files)
+
+        if not frames:
+            print("No data")
+            sys.exit(1)
+
+        df = consolidate_data(frames)
+        date_keys = list(frames.keys())
+
+        df = calculate_percentage(df, date_keys)
+
+        # FINAL COLUMN ORDER FIX
+        df = reorder_columns(df)
+
         output_folder = output_folder_map[mode]
         output_folder.mkdir(parents=True, exist_ok=True)
 
-        print(f"📊 Scraping for {mode[2:]} mode...")
-        frames = load_dataframes(dates, subfolder, downloaded_files)
-        if not frames:
-            print("⚠️ No data to process.")
-            sys.exit(1)
-
-        consolidated_df = consolidate_data(frames)
-        date_keys = list(frames.keys())
-        consolidated_df = calculate_percentage(consolidated_df, date_keys)
-
-# Reorder columns
-date_cols = [col for col in consolidated_df.columns if col.endswith('_Close')]
-
-ordered_cols = (
-    ['Symbol', '+/- Momentum %', 'Overall %', 'Trend']
-    + date_cols
-)
-
-consolidated_df = consolidated_df[ordered_cols]
-
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         output_file = output_folder / f"consolidated-{mode[2:]}-{timestamp}.csv"
-        consolidated_df.to_csv(output_file, index=False)
-        print(f"\n✅ CSV saved to {output_file}")
+
+        df.to_csv(output_file, index=False)
 
         cleanup(downloaded_files)
         open_csv(output_file)
 
+        print(f"Saved: {output_file}")
+
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"ERROR: {e}")
         cleanup(downloaded_files)
         sys.exit(1)
