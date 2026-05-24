@@ -194,6 +194,16 @@ if __name__ == '__main__':
         date_keys = list(frames.keys())
         consolidated_df = calculate_percentage(consolidated_df, date_keys)
 
+# Reorder columns
+date_cols = [col for col in consolidated_df.columns if col.endswith('_Close')]
+
+ordered_cols = (
+    ['Symbol', '+/- Momentum %', 'Overall %', 'Trend']
+    + date_cols
+)
+
+consolidated_df = consolidated_df[ordered_cols]
+
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         output_file = output_folder / f"consolidated-{mode[2:]}-{timestamp}.csv"
         consolidated_df.to_csv(output_file, index=False)
