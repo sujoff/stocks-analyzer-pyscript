@@ -155,6 +155,14 @@ def parse_args():
         elif arg in ["--daily", "--weekly", "--monthly"]:
             mode = arg
 
+        elif arg.startswith("--scrape-dir="):
+            global SCRAPE_DIR
+            SCRAPE_DIR = Path(arg.split("=")[1])
+
+        elif arg.startswith("--output-dir="):
+            global OUTPUT_DIR
+            OUTPUT_DIR = Path(arg.split("=")[1])
+
     if not mode:
         print("Missing mode")
         sys.exit(1)
@@ -186,7 +194,7 @@ if __name__ == "__main__":
         frames = load_dataframes(dates, subfolder_map[mode], downloaded_files)
 
         if not frames:
-            print("No data")
+            print("No data found for the selected date range.")
             sys.exit(1)
 
         df = consolidate_data(frames)
@@ -194,7 +202,6 @@ if __name__ == "__main__":
 
         df = calculate_percentage(df, date_keys)
 
-        # FINAL COLUMN ORDER FIX
         df = reorder_columns(df)
 
         output_folder = output_folder_map[mode]
