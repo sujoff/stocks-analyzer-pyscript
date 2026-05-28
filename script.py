@@ -80,17 +80,28 @@ def build_dates(mode: str, ref_date: datetime):
 
 def load_dataframes(date_list, subfolder, downloaded_files):
     frames = {}
+    missing_dates = []
 
     for d in date_list:
         path = download_csv(d, subfolder)
         if path and path.exists():
             df = pd.read_csv(path)
-
             df = df[['Symbol', 'Close']].copy()
             df['Close'] = df['Close'].astype(str).str.replace(',', '').astype(float)
-
             frames[d.strftime("%d.%m.%Y")] = df
             downloaded_files.append(str(path))
+        else:
+            missing_dates.append(d.strftime("%Y-%m-%d"))
+
+    if missing_dates:
+        print(f"\n⚠️  No data found for {len(missing_dates)} date(s) (weekend/holiday/not yet published):")
+        for md in missing_dates:
+            print(f"   • {md}")
+
+    if not frames:
+        print("\n❌ No data could be fetched for any of the requested dates.")
+    else:
+        print(f"\n✅ Data loaded for {len(frames)} of {len(date_list)} requested dates.")
 
     return frames
 
@@ -194,7 +205,6 @@ if __name__ == "__main__":
         frames = load_dataframes(dates, subfolder_map[mode], downloaded_files)
 
         if not frames:
-            print("No data found for the selected date range.")
             sys.exit(1)
 
         df = consolidate_data(frames)
@@ -215,7 +225,7 @@ if __name__ == "__main__":
         cleanup(downloaded_files)
         open_csv(output_file)
 
-        print(f"Saved: {output_file}")
+        print(f"\n📁 Saved: {output_file}")
 
     except Exception as e:
         print(f"ERROR: {e}")
