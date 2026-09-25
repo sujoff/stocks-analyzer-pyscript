@@ -33,6 +33,14 @@ This tool scrapes, consolidates, and analyzes NEPSE (Nepal Stock Exchange) stock
 
 ## Usage
 
+### macOS launcher
+
+Download `Nepse.dmg` from the repository and open it to access the macOS launcher. The launcher is also available as `NEPSE.command`; double-click it in Finder to start the interactive menu. Choose daily, weekly, or monthly analysis, then choose today, yesterday, or a custom date. The launcher installs its Python dependencies in a temporary virtual environment, downloads the latest `script.py`, and saves generated files under `/tmp/Scrape-StockPrice` and `/tmp/Scraped-Excels`.
+
+The launcher requires macOS, Python 3, and an internet connection. The first run may take longer while dependencies are installed.
+
+### Python script
+
 ## 🔧 Setup
 
 1. Clone the repository:

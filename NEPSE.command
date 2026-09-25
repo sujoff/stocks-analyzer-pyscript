@@ -10,6 +10,8 @@ DOWNLOADED_SCRIPT="/tmp/script.py"
 # Suppress harmless LibreSSL / urllib3 warning
 export PYTHONWARNINGS="ignore::Warning:urllib3"
 
+while true; do
+
 clear
 
 echo "=============================================================="
@@ -31,7 +33,7 @@ case $mode_choice in
     2) mode="--weekly" ;;
     3) mode="--monthly" ;;
     4) exit 0 ;;
-    *) echo "Invalid choice"; exit 1 ;;
+    *) echo "Invalid choice"; sleep 1; continue ;;
 esac
 
 # ─── Date Selection ─────────────────────────────────────────────
@@ -115,13 +117,15 @@ APPLESCRIPT
     # Check if user cancelled
     if [ $? -ne 0 ] || [ -z "$picked" ]; then
         echo "Date selection cancelled."
-        exit 0
+        sleep 1
+        continue
     fi
 
     # Validate format YYYY-MM-DD
     if ! echo "$picked" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
         echo "Invalid date format: $picked"
-        exit 1
+        sleep 1
+        continue
     fi
 
     custom_date="$picked"
@@ -129,36 +133,96 @@ APPLESCRIPT
 fi
 
 # ─── Setup ──────────────────────────────────────────────────────
+VENV_DIR="/tmp/nepse_venv"
+
 mkdir -p "$TEMP_SCRAPE"
 mkdir -p "$OUTPUT_DIR"
 
 if ! command -v python3 &> /dev/null; then
     echo "Python3 not found."
-    exit 1
+    sleep 2
+    continue
 fi
 
 echo
 echo "[1/3] Installing required packages..."
-python3 -m pip install --quiet pandas requests python-dateutil openpyxl
+# Create a venv if it doesn't exist yet, then install into it
+if [ ! -d "$VENV_DIR" ]; then
+    python3 -m venv "$VENV_DIR"
+fi
+"$VENV_DIR/bin/pip" install --quiet pandas requests python-dateutil openpyxl
 
 echo
 echo "[2/3] Downloading latest engine..."
 curl -sL "$PY_SCRIPT_URL" -o "$DOWNLOADED_SCRIPT"
 
-if [ ! -f "$DOWNLOADED_SCRIPT" ]; then
+if [ ! -s "$DOWNLOADED_SCRIPT" ]; then
     echo "Failed to download script."
-    exit 1
+    sleep 2
+    continue
+fi
+
+# The upstream analyzer skips dates whose CSV is absent. Resolve each requested
+# date first, preferring the closest available prior day (-1, then -2), and use
+# the next day (+1) only when neither prior date has data.
+"$VENV_DIR/bin/python3" - "$DOWNLOADED_SCRIPT" <<'PY'
+from pathlib import Path
+import sys
+
+script = Path(sys.argv[1])
+source = script.read_text()
+marker = 'if __name__ == "__main__":'
+if marker not in source:
+    raise SystemExit("Downloaded analyzer has an unexpected layout; cannot add date fallback.")
+
+fallback = r'''
+_original_build_dates = build_dates
+
+def build_dates(mode: str, ref_date: datetime):
+    resolved = []
+    used = set()
+    for requested in _original_build_dates(mode, ref_date):
+        chosen = None
+        for offset in (0, -1, -2, 1):
+            candidate = requested + timedelta(days=offset)
+            if candidate in used:
+                continue
+            filename = candidate.strftime("%Y_%m_%d.csv")
+            url = f"{BASE_URL}/{filename}"
+            try:
+                response = requests.get(url, timeout=20)
+                if response.status_code == 200:
+                    chosen = candidate
+                    break
+            except requests.RequestException:
+                pass
+        if chosen is not None:
+            if chosen != requested:
+                print(f"Using available data for {chosen:%Y-%m-%d} instead of {requested:%Y-%m-%d}.")
+            resolved.append(chosen)
+            used.add(chosen)
+        else:
+            print(f"No data found for {requested:%Y-%m-%d} or nearby fallback dates (-1, -2, +1).")
+    return resolved
+
+'''
+script.write_text(source.replace(marker, fallback + marker, 1))
+PY
+if [ $? -ne 0 ]; then
+    echo "Could not prepare date fallback in the downloaded analyzer."
+    sleep 2
+    continue
 fi
 
 echo
 echo "[3/3] Running analysis..."
 
 if [ -n "$custom_date" ]; then
-    python3 "$DOWNLOADED_SCRIPT" $mode --date="$custom_date" \
+    "$VENV_DIR/bin/python3" "$DOWNLOADED_SCRIPT" $mode --date="$custom_date" \
         --scrape-dir="$TEMP_SCRAPE" \
         --output-dir="$OUTPUT_DIR"
 else
-    python3 "$DOWNLOADED_SCRIPT" $mode \
+    "$VENV_DIR/bin/python3" "$DOWNLOADED_SCRIPT" $mode \
         --scrape-dir="$TEMP_SCRAPE" \
         --output-dir="$OUTPUT_DIR"
 fi
@@ -169,4 +233,6 @@ echo "✅ Completed. Output saved to:"
 echo "   $OUTPUT_DIR"
 echo "=============================================================="
 echo
-read -p "Press Enter to close..."
+read -p "Press Enter to go back to main menu..."
+
+done
